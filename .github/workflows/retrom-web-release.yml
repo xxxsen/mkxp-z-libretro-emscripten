@@ -71,6 +71,7 @@ jobs:
         run: |
           set -euo pipefail
           make -C mkxp-z/libretro -j "$(nproc)" \
+            PWD="$GITHUB_WORKSPACE/mkxp-z/libretro" \
             WASI_SDK="${{ runner.temp }}/wasi-sdk" \
             WASM_OPT="${{ runner.temp }}/binaryen/bin/wasm-opt"
 
