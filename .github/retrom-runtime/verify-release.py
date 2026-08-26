@@ -50,7 +50,15 @@ def main() -> int:
 
     patch = args.source / ".github/retrom-runtime/mkxp-deterministic-bindings.patch"
     patch_text = patch.read_text(encoding="utf-8")
-    if "/dev/urandom" not in patch_text or "printf '%s'" not in patch_text or "sha256sum" not in patch_text:
+    runtime_patch = args.source / ".github/retrom-runtime/patch-runtime.py"
+    runtime_patch_text = runtime_patch.read_text(encoding="utf-8")
+    if (
+        "/dev/urandom" not in patch_text
+        or "printf '%s'" not in patch_text
+        or "sha256sum" not in patch_text
+        or "mkxp_retro::sandbox.has_value()" not in runtime_patch_text
+        or "RETROM_RUNTIME_RESTORE_GUARD_SOURCE_INVALID" not in runtime_patch_text
+    ):
         raise SystemExit("RETROM_RELEASE_BINDING_PATCH_INVALID")
 
     js_path = args.output / "mkxp-z_libretro.js"

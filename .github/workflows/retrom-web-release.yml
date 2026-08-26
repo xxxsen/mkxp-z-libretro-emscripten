@@ -64,8 +64,10 @@ jobs:
           test "$(git rev-parse HEAD:retroarch)" = 69a4f0ea1e8aaf442ae4858f2e7f2b31a1776576
           git -C mkxp-z apply --check ../.github/retrom-runtime/mkxp-deterministic-bindings.patch
           git -C mkxp-z apply ../.github/retrom-runtime/mkxp-deterministic-bindings.patch
+          python3 .github/retrom-runtime/patch-runtime.py --source "$GITHUB_WORKSPACE"
           ! grep -n '/dev/urandom' mkxp-z/libretro/Makefile
           grep -n "printf '%s'.*sha256sum" mkxp-z/libretro/Makefile
+          grep -n 'should_render.*sandbox.has_value().*get_movie_from_main_thread' mkxp-z/src/core.cpp
 
       - name: Build stage 1
         run: |
@@ -110,6 +112,7 @@ jobs:
           set -euo pipefail
           git -C mkxp-z apply --check ../.github/retrom-runtime/mkxp-deterministic-bindings.patch
           git -C mkxp-z apply ../.github/retrom-runtime/mkxp-deterministic-bindings.patch
+          python3 .github/retrom-runtime/patch-runtime.py --source "$GITHUB_WORKSPACE"
 
       - name: Download stage 1
         uses: actions/download-artifact@v8
