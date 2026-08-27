@@ -1,15 +1,15 @@
-name: Retrom Web Runtime Release
+name: RPG Runtime Release
 
 on:
   push:
     tags:
-      - "retrom-web-f2efc98-r*"
+      - "rpg-runtime-f2efc98-r*"
 
 permissions:
   contents: write
 
 concurrency:
-  group: retrom-web-release-${{ github.ref }}
+  group: rpg-runtime-release-${{ github.ref }}
   cancel-in-progress: false
 
 defaults:
@@ -57,14 +57,14 @@ jobs:
       - name: Validate release identity and patch sandbox bindings
         run: |
           set -euo pipefail
-          [[ "$GITHUB_REF_NAME" =~ ^retrom-web-f2efc98-r[1-9][0-9]*$ ]]
+          [[ "$GITHUB_REF_NAME" =~ ^rpg-runtime-f2efc98-r[1-9][0-9]*$ ]]
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(git rev-list -n 1 "$GITHUB_REF_NAME")" = "$GITHUB_SHA"
           test "$(git rev-parse HEAD:mkxp-z)" = f2efc98a344c505a66820e06d6508092719b8dd2
           test "$(git rev-parse HEAD:retroarch)" = 69a4f0ea1e8aaf442ae4858f2e7f2b31a1776576
-          git -C mkxp-z apply --check ../.github/retrom-runtime/mkxp-deterministic-bindings.patch
-          git -C mkxp-z apply ../.github/retrom-runtime/mkxp-deterministic-bindings.patch
-          python3 .github/retrom-runtime/patch-runtime.py --source "$GITHUB_WORKSPACE"
+          git -C mkxp-z apply --check ../.github/rpg-runtime/mkxp-deterministic-bindings.patch
+          git -C mkxp-z apply ../.github/rpg-runtime/mkxp-deterministic-bindings.patch
+          python3 .github/rpg-runtime/patch-runtime.py --source "$GITHUB_WORKSPACE"
           ! grep -n '/dev/urandom' mkxp-z/libretro/Makefile
           grep -n "printf '%s'.*sha256sum" mkxp-z/libretro/Makefile
           grep -n 'should_render.*sandbox.has_value().*get_movie_from_main_thread' mkxp-z/src/core.cpp
@@ -80,7 +80,7 @@ jobs:
       - name: Upload stage 1
         uses: actions/upload-artifact@v7
         with:
-          name: retrom-mkxp-stage1
+          name: rpg-runtime-mkxp-stage1
           path: mkxp-z/libretro/build/libretro-stage1
           retention-days: 1
 
@@ -110,14 +110,14 @@ jobs:
       - name: Apply deterministic sandbox binding patch
         run: |
           set -euo pipefail
-          git -C mkxp-z apply --check ../.github/retrom-runtime/mkxp-deterministic-bindings.patch
-          git -C mkxp-z apply ../.github/retrom-runtime/mkxp-deterministic-bindings.patch
-          python3 .github/retrom-runtime/patch-runtime.py --source "$GITHUB_WORKSPACE"
+          git -C mkxp-z apply --check ../.github/rpg-runtime/mkxp-deterministic-bindings.patch
+          git -C mkxp-z apply ../.github/rpg-runtime/mkxp-deterministic-bindings.patch
+          python3 .github/rpg-runtime/patch-runtime.py --source "$GITHUB_WORKSPACE"
 
       - name: Download stage 1
         uses: actions/download-artifact@v8
         with:
-          name: retrom-mkxp-stage1
+          name: rpg-runtime-mkxp-stage1
           path: mkxp-z/libretro/build/libretro-stage1
 
       - name: Configure core
@@ -151,7 +151,7 @@ jobs:
       - name: Upload core
         uses: actions/upload-artifact@v7
         with:
-          name: retrom-mkxp-core
+          name: rpg-runtime-mkxp-core
           path: mkxp-z/build/mkxp-z_libretro.a
           retention-days: 1
 
@@ -175,7 +175,7 @@ jobs:
       - name: Download core
         uses: actions/download-artifact@v8
         with:
-          name: retrom-mkxp-core
+          name: rpg-runtime-mkxp-core
           path: mkxp-z/build
 
       - name: Build frontend
@@ -191,18 +191,18 @@ jobs:
             HAVE_AL=0 \
             HAVE_WASMFS=1 \
             HAVE_EXTRA_WASMFS=1
-          mkdir -p "${{ runner.temp }}/retrom-runtime-output"
+          mkdir -p "${{ runner.temp }}/rpg-runtime-output"
           install -m 0644 retroarch/mkxp-z_libretro.js \
-            "${{ runner.temp }}/retrom-runtime-output/mkxp-z_libretro.js"
+            "${{ runner.temp }}/rpg-runtime-output/mkxp-z_libretro.js"
           install -m 0644 retroarch/mkxp-z_libretro.wasm \
-            "${{ runner.temp }}/retrom-runtime-output/mkxp-z_libretro.wasm"
+            "${{ runner.temp }}/rpg-runtime-output/mkxp-z_libretro.wasm"
 
       - name: Validate and describe assets
         run: |
           set -euo pipefail
-          python3 .github/retrom-runtime/verify-release.py \
+          python3 .github/rpg-runtime/verify-release.py \
             --source "$GITHUB_WORKSPACE" \
-            --output "${{ runner.temp }}/retrom-runtime-output" \
+            --output "${{ runner.temp }}/rpg-runtime-output" \
             --repository "https://github.com/$GITHUB_REPOSITORY" \
             --tag "$GITHUB_REF_NAME" \
             --commit "$GITHUB_SHA"
@@ -215,8 +215,8 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --verify-tag \
             --target "$GITHUB_SHA" \
-            --title "Retrom mkxp-z Web $GITHUB_REF_NAME" \
+            --title "RPG Runtime mkxp-z Web $GITHUB_REF_NAME" \
             --generate-notes \
-            "${{ runner.temp }}/retrom-runtime-output/mkxp-z_libretro.js" \
-            "${{ runner.temp }}/retrom-runtime-output/mkxp-z_libretro.wasm" \
-            "${{ runner.temp }}/retrom-runtime-output/retrom-runtime-release.json"
+            "${{ runner.temp }}/rpg-runtime-output/mkxp-z_libretro.js" \
+            "${{ runner.temp }}/rpg-runtime-output/mkxp-z_libretro.wasm" \
+            "${{ runner.temp }}/rpg-runtime-output/rpg-runtime-release.json"

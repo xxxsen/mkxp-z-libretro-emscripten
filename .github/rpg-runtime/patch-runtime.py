@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply the reviewed Retrom state-restore lifecycle guard."""
+"""Apply the reviewed state-restore lifecycle guard."""
 
 from __future__ import annotations
 
@@ -26,10 +26,10 @@ def main() -> int:
     path = args.source / "mkxp-z/src/core.cpp"
     source = path.read_text(encoding="utf-8")
     if source.count(OLD) != 1 or NEW in source:
-        raise SystemExit("RETROM_RUNTIME_RESTORE_GUARD_SOURCE_INVALID")
+        raise SystemExit("RPG_RUNTIME_RESTORE_GUARD_SOURCE_INVALID")
     path.write_text(source.replace(OLD, NEW), encoding="utf-8")
     if path.read_text(encoding="utf-8").count(NEW) != 1:
-        raise SystemExit("RETROM_RUNTIME_RESTORE_GUARD_APPLY_FAILED")
+        raise SystemExit("RPG_RUNTIME_RESTORE_GUARD_APPLY_FAILED")
     return 0
 
 

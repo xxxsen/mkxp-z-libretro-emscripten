@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the Retrom mkxp-z release pair and emit diagnostic metadata."""
+"""Validate the host-independent mkxp-z release pair and emit metadata."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 
 
-TAG = re.compile(r"^retrom-web-f2efc98-r[1-9][0-9]*$")
+TAG = re.compile(r"^rpg-runtime-f2efc98-r[1-9][0-9]*$")
 COMMIT = re.compile(r"^[0-9a-f]{40}$")
 EXPECTED_GITLINKS = {
     "mkxp-z": "f2efc98a344c505a66820e06d6508092719b8dd2",
@@ -44,31 +44,31 @@ def main() -> int:
     args = parser.parse_args()
 
     if TAG.fullmatch(args.tag) is None or COMMIT.fullmatch(args.commit) is None:
-        raise SystemExit("RETROM_RELEASE_IDENTITY_INVALID")
+        raise SystemExit("RPG_RUNTIME_RELEASE_IDENTITY_INVALID")
     if any(gitlink(args.source, path) != expected for path, expected in EXPECTED_GITLINKS.items()):
-        raise SystemExit("RETROM_RELEASE_SOURCE_INVALID")
+        raise SystemExit("RPG_RUNTIME_RELEASE_SOURCE_INVALID")
 
-    patch = args.source / ".github/retrom-runtime/mkxp-deterministic-bindings.patch"
+    patch = args.source / ".github/rpg-runtime/mkxp-deterministic-bindings.patch"
     patch_text = patch.read_text(encoding="utf-8")
-    runtime_patch = args.source / ".github/retrom-runtime/patch-runtime.py"
+    runtime_patch = args.source / ".github/rpg-runtime/patch-runtime.py"
     runtime_patch_text = runtime_patch.read_text(encoding="utf-8")
     if (
         "/dev/urandom" not in patch_text
         or "printf '%s'" not in patch_text
         or "sha256sum" not in patch_text
         or "mkxp_retro::sandbox.has_value()" not in runtime_patch_text
-        or "RETROM_RUNTIME_RESTORE_GUARD_SOURCE_INVALID" not in runtime_patch_text
+        or "RPG_RUNTIME_RESTORE_GUARD_SOURCE_INVALID" not in runtime_patch_text
     ):
-        raise SystemExit("RETROM_RELEASE_BINDING_PATCH_INVALID")
+        raise SystemExit("RPG_RUNTIME_RELEASE_BINDING_PATCH_INVALID")
 
     js_path = args.output / "mkxp-z_libretro.js"
     wasm_path = args.output / "mkxp-z_libretro.wasm"
     if js_path.is_symlink() or not js_path.is_file() or js_path.stat().st_size < 200_000:
-        raise SystemExit("RETROM_RELEASE_JS_INVALID")
+        raise SystemExit("RPG_RUNTIME_RELEASE_JS_INVALID")
     if wasm_path.is_symlink() or not wasm_path.is_file() or wasm_path.stat().st_size < 40_000_000:
-        raise SystemExit("RETROM_RELEASE_WASM_INVALID")
+        raise SystemExit("RPG_RUNTIME_RELEASE_WASM_INVALID")
     if wasm_path.read_bytes()[:8] != b"\x00asm\x01\x00\x00\x00":
-        raise SystemExit("RETROM_RELEASE_WASM_INVALID")
+        raise SystemExit("RPG_RUNTIME_RELEASE_WASM_INVALID")
 
     assets = []
     for path in (js_path, wasm_path):
@@ -80,7 +80,7 @@ def main() -> int:
             }
         )
     metadata = {
-        "adapterAbi": "mkxp-state-v1",
+        "adapterAbi": "mkxp-state",
         "assets": assets,
         "commit": args.commit,
         "digestPolicy": "OBSERVED_CACHE_INTEGRITY_ONLY",
@@ -89,7 +89,7 @@ def main() -> int:
         "sourceCommits": EXPECTED_GITLINKS,
         "tag": args.tag,
     }
-    (args.output / "retrom-runtime-release.json").write_text(
+    (args.output / "rpg-runtime-release.json").write_text(
         json.dumps(metadata, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
