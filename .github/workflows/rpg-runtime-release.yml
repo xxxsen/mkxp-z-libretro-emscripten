@@ -63,10 +63,10 @@ jobs:
           git fetch --no-tags origin \
             '+refs/heads/retrom/f2efc98:refs/remotes/origin/retrom/f2efc98'
           git merge-base --is-ancestor "$GITHUB_SHA" origin/retrom/f2efc98
-          git fetch --no-tags \
-            https://github.com/white-axe/mkxp-z-libretro-emscripten.git main
-          test "$(git merge-base "$GITHUB_SHA" FETCH_HEAD)" = \
-            f585dc65499122a7abf503ca5d5dc8ef29452d91
+          git merge-base --is-ancestor \
+            f585dc65499122a7abf503ca5d5dc8ef29452d91 "$GITHUB_SHA"
+          test -z "$(git rev-list --min-parents=2 \
+            f585dc65499122a7abf503ca5d5dc8ef29452d91.."$GITHUB_SHA")"
           test "$(git rev-parse HEAD:mkxp-z)" = f2efc98a344c505a66820e06d6508092719b8dd2
           test "$(git rev-parse HEAD:retroarch)" = 69a4f0ea1e8aaf442ae4858f2e7f2b31a1776576
           git -C mkxp-z apply --check ../.github/rpg-runtime/mkxp-deterministic-bindings.patch
