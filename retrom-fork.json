@@ -1,7 +1,8 @@
 {
   "schemaVersion": 1,
   "forkRepository": "https://github.com/xxxsen/mkxp-z-libretro-emscripten",
-  "defaultBranch": "main",
+  "defaultBranch": "retrom/f2efc98",
+  "upstreamMirrorBranch": "main",
   "upstreams": [
     {
       "role": "wrapper",
