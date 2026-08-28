@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "forkRepository": "https://github.com/xxxsen/mkxp-z-libretro-emscripten",
+  "defaultBranch": "main",
+  "upstreams": [
+    {
+      "role": "wrapper",
+      "repository": "https://github.com/white-axe/mkxp-z-libretro-emscripten",
+      "refType": "COMMIT",
+      "ref": "f585dc65499122a7abf503ca5d5dc8ef29452d91",
+      "commit": "f585dc65499122a7abf503ca5d5dc8ef29452d91"
+    },
+    {
+      "role": "mkxp-z",
+      "repository": "https://github.com/white-axe/mkxp-z",
+      "refType": "COMMIT",
+      "ref": "f2efc98a344c505a66820e06d6508092719b8dd2",
+      "commit": "f2efc98a344c505a66820e06d6508092719b8dd2"
+    },
+    {
+      "role": "retroarch",
+      "repository": "https://github.com/libretro/RetroArch",
+      "refType": "COMMIT",
+      "ref": "69a4f0ea1e8aaf442ae4858f2e7f2b31a1776576",
+      "commit": "69a4f0ea1e8aaf442ae4858f2e7f2b31a1776576"
+    }
+  ],
+  "releaseTagPattern": "^rpg-runtime-(f2efc98|g[0-9a-f]{12})-r[1-9][0-9]*(-rc\\.[1-9][0-9]*)?$",
+  "adapterAbi": "mkxp-state",
+  "releaseAssets": [
+    "mkxp-z_libretro.js",
+    "mkxp-z_libretro.wasm",
+    "rpg-runtime-release.json"
+  ]
+}
