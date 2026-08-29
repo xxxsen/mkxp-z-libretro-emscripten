@@ -16,15 +16,22 @@ SPEC.loader.exec_module(PATCH)
 
 
 class RemoteContentPatchTests(unittest.TestCase):
+    def test_manifest_base_url_does_not_use_getline_capacity_as_length(self) -> None:
+        source = (
+            MODULE_PATH.parents[2]
+            / "retroarch/frontend/drivers/platform_emscripten.c"
+        ).read_text(encoding="utf-8")
+
+        patched = PATCH.patch_retroarch(source)
+
+        self.assertIn('base_url[strcspn(base_url, "\\r\\n")] = \'\\0\';', patched)
+        self.assertNotIn("base_url[len-1]", patched)
+
     def test_retroarch_requires_a_bounded_power_of_two_chunk_size(self) -> None:
-        source = "\n".join(
-            (
-                PATCH.OLD_FETCH_DECLARATIONS,
-                PATCH.OLD_FETCH_GUARD,
-                PATCH.OLD_FETCH_REQUIREMENTS,
-                PATCH.OLD_BACKEND,
-            )
-        )
+        source = (
+            MODULE_PATH.parents[2]
+            / "retroarch/frontend/drivers/platform_emscripten.c"
+        ).read_text(encoding="utf-8")
 
         patched = PATCH.patch_retroarch(source)
 

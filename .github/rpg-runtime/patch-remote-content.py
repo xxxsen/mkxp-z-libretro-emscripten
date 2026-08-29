@@ -48,6 +48,10 @@ OLD_FETCH_REQUIREMENTS = """      if (!(fetch_manifest && fetch_base_dir))
 OLD_BACKEND = "fetch = wasmfs_create_fetch_backend(base_url, 16*1024*1024);"
 NEW_BACKEND = "fetch = wasmfs_create_fetch_backend(base_url, (int)fetch_chunk_size);"
 
+OLD_BASE_URL_TERMINATION = """         base_url[strcspn(base_url, "\\r\\n")] = '\\0'; // drop newline
+         base_url[len-1] = '\\0'; // drop newline"""
+NEW_BASE_URL_TERMINATION = """         base_url[strcspn(base_url, "\\r\\n")] = '\\0'; // terminate at the actual newline"""
+
 OLD_HEAD = """        if (fileInfo.ok &&
             fileInfo.headers.has('Content-Length') &&
             fileInfo.headers.get('Accept-Ranges') == 'bytes' &&
@@ -135,11 +139,17 @@ def patch_retroarch(source: str) -> str:
         "",
         "RPG_RUNTIME_FETCHFS_REQUIREMENTS_INVALID",
     )
-    return replace_exact(
+    source = replace_exact(
         source,
         OLD_BACKEND,
         NEW_BACKEND,
         "RPG_RUNTIME_FETCHFS_BACKEND_INVALID",
+    )
+    return replace_exact(
+        source,
+        OLD_BASE_URL_TERMINATION,
+        NEW_BASE_URL_TERMINATION,
+        "RPG_RUNTIME_FETCHFS_BASE_URL_TERMINATION_INVALID",
     )
 
 
