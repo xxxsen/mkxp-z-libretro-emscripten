@@ -52,12 +52,17 @@ def main() -> int:
     patch_text = patch.read_text(encoding="utf-8")
     runtime_patch = args.source / ".github/rpg-runtime/patch-runtime.py"
     runtime_patch_text = runtime_patch.read_text(encoding="utf-8")
+    remote_content_patch = args.source / ".github/rpg-runtime/patch-remote-content.py"
+    remote_content_patch_text = remote_content_patch.read_text(encoding="utf-8")
     if (
         "/dev/urandom" not in patch_text
         or "printf '%s'" not in patch_text
         or "sha256sum" not in patch_text
         or "mkxp_retro::sandbox.has_value()" not in runtime_patch_text
         or "RPG_RUNTIME_RESTORE_GUARD_SOURCE_INVALID" not in runtime_patch_text
+        or "FETCH_CHUNK_SIZE_BYTES" not in remote_content_patch_text
+        or "FETCHFS_RANGE_PROTOCOL_INVALID" not in remote_content_patch_text
+        or "FETCHFS_RANGE_LENGTH_INVALID" not in remote_content_patch_text
     ):
         raise SystemExit("RPG_RUNTIME_RELEASE_BINDING_PATCH_INVALID")
 
@@ -69,6 +74,17 @@ def main() -> int:
         raise SystemExit("RPG_RUNTIME_RELEASE_WASM_INVALID")
     if wasm_path.read_bytes()[:8] != b"\x00asm\x01\x00\x00\x00":
         raise SystemExit("RPG_RUNTIME_RELEASE_WASM_INVALID")
+    platform_source = (
+        args.source / "retroarch/frontend/drivers/platform_emscripten.c"
+    ).read_text(encoding="utf-8")
+    js_bytes = js_path.read_bytes()
+    if (
+        "FETCH_CHUNK_SIZE_BYTES" not in platform_source
+        or b"FETCHFS_RANGE_REQUIRED" not in js_bytes
+        or b"FETCHFS_RANGE_PROTOCOL_INVALID" not in js_bytes
+        or b"FETCHFS_RANGE_LENGTH_INVALID" not in js_bytes
+    ):
+        raise SystemExit("RPG_RUNTIME_RELEASE_REMOTE_CONTENT_INVALID")
 
     assets = []
     for path in (js_path, wasm_path):
@@ -84,6 +100,11 @@ def main() -> int:
         "assets": assets,
         "commit": args.commit,
         "digestPolicy": "OBSERVED_CACHE_INTEGRITY_ONLY",
+        "remoteContent": {
+            "chunkSizeEnvironment": "FETCH_CHUNK_SIZE_BYTES",
+            "kind": "WASMFS_FETCH_RANGE_V1",
+            "rangeRequired": True,
+        },
         "repository": args.repository,
         "schemaVersion": 1,
         "sourceCommits": EXPECTED_GITLINKS,

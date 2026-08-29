@@ -1,0 +1,42 @@
+name: RPG Runtime Quality
+
+on:
+  pull_request:
+  push:
+    branches:
+      - "retrom/**"
+      - "feat/**"
+      - "fix/**"
+      - "build/**"
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - name: Validate Python and remote-content patch contract
+        run: |
+          set -euo pipefail
+          python3 -m compileall -q .github/rpg-runtime
+          python3 -m unittest discover -s .github/rpg-runtime -p 'test_*.py'
+          curl --fail --location --retry 3 \
+            --output "${{ runner.temp }}/libwasmfs_fetch.js" \
+            https://raw.githubusercontent.com/emscripten-core/emscripten/4.0.8/src/lib/libwasmfs_fetch.js
+          mkdir -p "${{ runner.temp }}/emscripten/src/lib"
+          mv "${{ runner.temp }}/libwasmfs_fetch.js" \
+            "${{ runner.temp }}/emscripten/src/lib/libwasmfs_fetch.js"
+          python3 .github/rpg-runtime/patch-remote-content.py \
+            --source "$GITHUB_WORKSPACE" \
+            --emscripten-root "${{ runner.temp }}/emscripten"
+          grep -n 'FETCH_CHUNK_SIZE_BYTES' \
+            retroarch/frontend/drivers/platform_emscripten.c
+          grep -n 'FETCHFS_RANGE_PROTOCOL_INVALID' \
+            "${{ runner.temp }}/emscripten/src/lib/libwasmfs_fetch.js"
+          node .github/rpg-runtime/test-remote-content.mjs \
+            "${{ runner.temp }}/emscripten/src/lib/libwasmfs_fetch.js"
