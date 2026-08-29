@@ -188,6 +188,9 @@ jobs:
       - name: Build frontend
         run: |
           set -euo pipefail
+          python3 .github/rpg-runtime/patch-remote-content.py \
+            --source "$GITHUB_WORKSPACE" \
+            --emscripten-root "$(em-config EMSCRIPTEN_ROOT)"
           mv mkxp-z/build/mkxp-z_libretro.a retroarch/libretro_emscripten.a
           emmake make -C retroarch -f Makefile.emscripten \
             LIBRETRO=mkxp-z \

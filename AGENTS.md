@@ -53,3 +53,11 @@ content.
 Before publishing, run the checks relevant to the changed wrapper/core/build
 code and verify that `.github/rpg-runtime/verify-release.py` accepts the output.
 Do not publish games, RTP, credentials, or host-specific code.
+
+The Web runtime must retain standard gamepad input, checkpoint creation,
+checkpoint restore in a fresh runtime instance, and strict seekable remote
+content reads. Remote project/RTP access may use generic URL and file-system
+primitives, but must not import or encode a Retrom host API. A Range-capable
+release must fail closed on full-body fallback, malformed `Content-Range`, or
+response-length drift; do not trade these functional guarantees for a silent
+whole-archive download.

@@ -19,6 +19,15 @@ against the transient empty sandbox state observed after a successful
 libretro `retro_unserialize`; without the guard the next frame aborts before
 restored game input can resume.
 
+Remote `.mkxpz` project and RTP archives are exposed through RetroArch's
+WasmFS FetchFS backend. The Retrom build makes that backend fail closed: the
+host must provide a bounded power-of-two chunk size, the remote endpoint must
+advertise byte ranges, and every read must return an exact `206` response with
+the expected `Content-Range` and byte length. It never falls back to a whole
+archive download. The host remains responsible for creating the FetchFS
+manifest and for passing content URLs; this fork does not know any Retrom API
+or launch identifier.
+
 Metadata digests describe the uploaded bytes for cache diagnostics. A consumer
 identifies the runtime by repository, tag, tag commit, asset filenames and
 `mkxp-state`; observed digests are not release identity.
