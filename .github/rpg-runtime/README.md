@@ -10,6 +10,13 @@ The release contains:
 - `mkxp-z_libretro.wasm`
 - `rpg-runtime-release.json`
 
+Before a tag exists, a maintainer can dispatch the same workflow on a
+`feat/*`, `fix/*`, `build/*`, or active `retrom/*` branch. It uploads the JS
+and Wasm pair as a seven-day integration artifact without creating a Release.
+That candidate is intended for the aggregate runtime's local asset override
+and Retrom product-chain validation. Only a tag run validates release metadata
+and creates the immutable GitHub Release.
+
 The tagged superproject fixes the exact mkxp-z and RetroArch gitlinks. A small
 build patch replaces mkxp-z's random sandbox function-type identifiers with
 identifiers derived from the function type name. This is required because the

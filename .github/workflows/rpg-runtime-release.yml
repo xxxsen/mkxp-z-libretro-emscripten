@@ -1,6 +1,7 @@
 name: RPG Runtime Release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "rpg-runtime-f2efc98-r*"
@@ -57,12 +58,17 @@ jobs:
       - name: Validate release identity and patch sandbox bindings
         run: |
           set -euo pipefail
-          [[ "$GITHUB_REF_NAME" =~ ^rpg-runtime-f2efc98-r[1-9][0-9]*$ ]]
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git rev-list -n 1 "$GITHUB_REF_NAME")" = "$GITHUB_SHA"
           git fetch --no-tags origin \
             '+refs/heads/retrom/f2efc98:refs/remotes/origin/retrom/f2efc98'
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/retrom/f2efc98
+          if [[ "$GITHUB_REF_TYPE" = tag ]]; then
+            [[ "$GITHUB_REF_NAME" =~ ^rpg-runtime-f2efc98-r[1-9][0-9]*$ ]]
+            test "$(git rev-list -n 1 "$GITHUB_REF_NAME")" = "$GITHUB_SHA"
+            git merge-base --is-ancestor "$GITHUB_SHA" origin/retrom/f2efc98
+          else
+            [[ "$GITHUB_REF_NAME" =~ ^(retrom|feat|fix|build)/[a-z0-9][a-z0-9/-]*$ ]]
+            git merge-base --is-ancestor origin/retrom/f2efc98 "$GITHUB_SHA"
+          fi
           git merge-base --is-ancestor \
             f585dc65499122a7abf503ca5d5dc8ef29452d91 "$GITHUB_SHA"
           test -z "$(git rev-list --min-parents=2 \
@@ -208,6 +214,7 @@ jobs:
             "${{ runner.temp }}/rpg-runtime-output/mkxp-z_libretro.wasm"
 
       - name: Validate and describe assets
+        if: github.ref_type == 'tag'
         run: |
           set -euo pipefail
           python3 .github/rpg-runtime/verify-release.py \
@@ -217,7 +224,17 @@ jobs:
             --tag "$GITHUB_REF_NAME" \
             --commit "$GITHUB_SHA"
 
+      - name: Upload integration candidate
+        uses: actions/upload-artifact@v7
+        with:
+          name: rpg-runtime-mkxp-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/rpg-runtime-output/mkxp-z_libretro.js
+            ${{ runner.temp }}/rpg-runtime-output/mkxp-z_libretro.wasm
+          retention-days: 7
+
       - name: Create immutable-tag release
+        if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
