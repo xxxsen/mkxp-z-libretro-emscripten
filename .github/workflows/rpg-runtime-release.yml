@@ -71,8 +71,10 @@ jobs:
           fi
           git merge-base --is-ancestor \
             f585dc65499122a7abf503ca5d5dc8ef29452d91 "$GITHUB_SHA"
+          # PR #2 was accidentally merged instead of squashed. Keep that
+          # immutable checkpoint, but reject every later merge commit.
           test -z "$(git rev-list --min-parents=2 \
-            f585dc65499122a7abf503ca5d5dc8ef29452d91.."$GITHUB_SHA")"
+            bf5f525e864b162bea0789d46932e5f800b80076.."$GITHUB_SHA")"
           test "$(git rev-parse HEAD:mkxp-z)" = f2efc98a344c505a66820e06d6508092719b8dd2
           test "$(git rev-parse HEAD:retroarch)" = 69a4f0ea1e8aaf442ae4858f2e7f2b31a1776576
           git -C mkxp-z apply --check ../.github/rpg-runtime/mkxp-deterministic-bindings.patch
