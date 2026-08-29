@@ -27,7 +27,11 @@ content.
 - Branch names use lowercase ASCII and hyphens. Do not create branches named
   `temp`, `clean`, `final`, `runtime-clean`, or with an agent/user name.
 - Create work branches from `retrom/f2efc98`, merge one logical change at a
-  time back into that baseline, then delete the work branch.
+  time back into that baseline, then delete the work branch. GitHub PRs must
+  use squash merge (or a reviewed rebase/fast-forward), never a merge commit.
+  Commit `bf5f525e864b162bea0789d46932e5f800b80076` is the one immutable
+  historical checkpoint accepted after PR #2 was merged incorrectly; the
+  release workflow rejects every merge commit after that checkpoint.
 - Never force-push, move, or delete another contributor's branch. A one-time
   repository normalization must be explicitly authorized by the maintainer.
 - Preserve downstream patches as small reviewable commits so an upstream sync
