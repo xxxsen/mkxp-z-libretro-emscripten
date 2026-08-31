@@ -1,6 +1,6 @@
 # RPG Runtime mkxp-z Web release
 
-Tags matching `rpg-runtime-f2efc98-rN` build only the pinned mkxp-z core and
+Tags matching `retrom-core-f2efc98-rN` build only the pinned mkxp-z core and
 RetroArch Emscripten frontend. The workflow never downloads or packages RPG
 Maker games or RTP archives.
 
