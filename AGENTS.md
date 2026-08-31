@@ -1,7 +1,7 @@
 # Retrom mkxp-z Web fork maintenance rules
 
 This fork builds the mkxp-z/RetroArch browser core consumed by
-`xxxsen/retrom-runtime`. It must remain independent of any Retrom host
+`retrom-project/retrom-runtime`. It must remain independent of any Retrom host
 application API, database, review workflow, credentials, or private game
 content.
 
@@ -39,9 +39,8 @@ content.
 
 ## Releases
 
-- The existing baseline keeps the historical tag stem
-  `rpg-runtime-f2efc98-rN`. A future untagged upstream baseline uses
-  `rpg-runtime-g<12-hex-commit>-rN`.
+- The existing baseline uses `retrom-core-f2efc98-rN`. A future untagged
+  upstream baseline uses `retrom-core-g<12-hex-commit>-rN`.
 - `rN` increases for any source, build, asset, or adapter-contract change while
   the upstream baseline is unchanged. A new upstream baseline restarts at
   `r1`, with optional `-rc.N` only for integration candidates.
@@ -50,6 +49,8 @@ content.
   gitlink commits recorded in `retrom-fork.json`.
 - Tags and published assets are immutable: never move a tag, overwrite an
   asset, or create aliases such as `latest`, `stable`, or `current`.
+- Existing `rpg-runtime-*` tags are immutable historical records. Never create
+  another tag in that retired namespace.
 - The tag workflow is the only supported way to build and upload release
   assets. Observed hashes diagnose local/cache corruption; repository, tag,
   tag commit, asset filename, and adapter ABI define release identity.

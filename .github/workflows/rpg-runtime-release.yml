@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - "rpg-runtime-f2efc98-r*"
+      - "retrom-core-f2efc98-r*"
 
 permissions:
   contents: write
@@ -62,7 +62,7 @@ jobs:
           git fetch --no-tags origin \
             '+refs/heads/retrom/f2efc98:refs/remotes/origin/retrom/f2efc98'
           if [[ "$GITHUB_REF_TYPE" = tag ]]; then
-            [[ "$GITHUB_REF_NAME" =~ ^rpg-runtime-f2efc98-r[1-9][0-9]*$ ]]
+            [[ "$GITHUB_REF_NAME" =~ ^retrom-core-f2efc98-r[1-9][0-9]*$ ]]
             test "$(git rev-list -n 1 "$GITHUB_REF_NAME")" = "$GITHUB_SHA"
             git merge-base --is-ancestor "$GITHUB_SHA" origin/retrom/f2efc98
           else

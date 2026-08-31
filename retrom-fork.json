@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "forkRepository": "https://github.com/xxxsen/mkxp-z-libretro-emscripten",
+  "forkRepository": "https://github.com/retrom-project/mkxp-z-libretro-emscripten",
   "defaultBranch": "retrom/f2efc98",
   "upstreamMirrorBranch": "main",
   "upstreams": [
@@ -26,7 +26,7 @@
       "commit": "69a4f0ea1e8aaf442ae4858f2e7f2b31a1776576"
     }
   ],
-  "releaseTagPattern": "^rpg-runtime-(f2efc98|g[0-9a-f]{12})-r[1-9][0-9]*(-rc\\.[1-9][0-9]*)?$",
+  "releaseTagPattern": "^retrom-core-(f2efc98|g[0-9a-f]{12})-r[1-9][0-9]*(-rc\\.[1-9][0-9]*)?$",
   "adapterAbi": "mkxp-state",
   "releaseAssets": [
     "mkxp-z_libretro.js",

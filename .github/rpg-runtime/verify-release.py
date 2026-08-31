@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 
 
-TAG = re.compile(r"^rpg-runtime-f2efc98-r[1-9][0-9]*$")
+TAG = re.compile(r"^retrom-core-f2efc98-r[1-9][0-9]*$")
 COMMIT = re.compile(r"^[0-9a-f]{40}$")
 EXPECTED_GITLINKS = {
     "mkxp-z": "f2efc98a344c505a66820e06d6508092719b8dd2",
