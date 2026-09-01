@@ -66,3 +66,7 @@ primitives, but must not import or encode a Retrom host API. A Range-capable
 release must fail closed on full-body fallback, malformed `Content-Range`, or
 response-length drift; do not trade these functional guarantees for a silent
 whole-archive download.
+
+## PFB candidates
+
+`.github/rpg-runtime/build-candidate.sh <absolute-empty-output-directory>` is the only PFB asset entry. It reuses `.github/rpg-runtime/build-web.sh` and the release verifier, then emits the release-shaped assets plus `retrom-core-candidate.json`; it never creates a tag or Release. The output path must be absolute, existing, non-symlink and empty. The locked builder receives source and output mounts only, never the Docker socket. Candidate descriptors contain source/asset digests but no host path, timestamp, credential or game data; this local path does not relax formal release rules.

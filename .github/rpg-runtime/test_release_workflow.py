@@ -29,6 +29,34 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("must\n  use squash merge", agents)
         self.assertIn(CHECKPOINT, agents)
 
+    def test_pfb_candidate_uses_locked_builder_and_calling_user(self) -> None:
+        recipe = ROOT / ".github/rpg-runtime"
+        candidate = (recipe / "build-candidate.sh").read_text(encoding="utf-8")
+        builder = (recipe / "build-web.sh").read_text(encoding="utf-8")
+
+        self.assertIn('candidate_descriptor.py" prepare', candidate)
+        self.assertIn('candidate_descriptor.py" finalize', candidate)
+        self.assertIn('test -f "$output/rpg-runtime-release.json"', candidate)
+        self.assertIn('verify-release.py"', builder)
+        self.assertIn('--source "$source_root"', builder)
+        self.assertIn("--core-id mkxp", candidate)
+        self.assertIn("stage1_image=ubuntu@sha256:", builder)
+        self.assertIn("emscripten_image=emscripten/emsdk@sha256:", builder)
+        self.assertIn("--stage1-in-container", builder)
+        self.assertIn("--core-in-container", builder)
+        self.assertIn("--frontend-in-container", builder)
+        self.assertIn('"$artifacts/stage1/."', builder)
+        self.assertIn('"$artifacts/mkxp-z_libretro.a"', builder)
+        self.assertIn("if ((jobs > 4))", builder)
+        self.assertIn('find "$work/core" -mindepth 1 -delete', builder)
+        self.assertIn("libtool python3 ruby", builder)
+        self.assertIn("cmake==3.28.3 meson==1.3.2", builder)
+        self.assertIn('setpriv --reuid="$1" --regid="$2"', builder)
+        self.assertIn("XDG_CONFIG_HOME=/work/frontend/user-config", builder)
+        self.assertIn("c = 'emcc'", builder)
+        self.assertNotIn("RUBYOPT=-rset", builder)
+        self.assertNotIn("/var/run/docker.sock", builder)
+
 
 if __name__ == "__main__":
     unittest.main()
