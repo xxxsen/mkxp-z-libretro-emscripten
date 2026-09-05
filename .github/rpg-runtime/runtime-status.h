@@ -7,5 +7,6 @@
 void runtime_frame_presented(void);
 void runtime_restore_started(void);
 void runtime_restore_finished(bool success);
+bool runtime_take_exit_request(void);
 
 #endif

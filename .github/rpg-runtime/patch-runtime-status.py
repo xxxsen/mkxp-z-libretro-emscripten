@@ -87,6 +87,23 @@ def patch_linker(source: str) -> str:
     )
 
 
+def patch_mainloop(source: str) -> str:
+    return replace_exact(
+        source, "void emscripten_mainloop(void)\n{\n",
+        '#include "frontend/drivers/runtime-status.h"\n\n'
+        "void emscripten_mainloop(void)\n{\n"
+        "   /* Shutdown precedes visibility, pause, audio and graphics checks.\n"
+        "    * main_exit unloads the core and unregisters browser observers on\n"
+        "    * their owning threads before Emscripten runs global destructors. */\n"
+        "   if (runtime_take_exit_request())\n"
+        "   {\n"
+        "      main_exit(NULL);\n"
+        "      emscripten_force_exit(0);\n"
+        "      return;\n"
+        "   }\n",
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=Path, required=True)
@@ -98,6 +115,7 @@ def main() -> int:
     for relative, patcher in (
         ("retroarch/tasks/task_save.c", patch_save),
         ("retroarch/gfx/video_driver.c", patch_video),
+        ("retroarch/retroarch.c", patch_mainloop),
         ("retroarch/Makefile.emscripten", patch_linker),
     ):
         path = args.source / relative

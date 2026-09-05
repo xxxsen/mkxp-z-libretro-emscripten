@@ -10,6 +10,19 @@
 
 static uint32_t presented_frames;
 static int restore_result;
+static int exit_requested;
+
+/* The browser must not execute C++ destructors while the core/audio threads
+ * still use their globals. Only publish intent here; the core loop owns exit. */
+EMSCRIPTEN_KEEPALIVE void runtime_request_exit(void)
+{
+   __atomic_store_n(&exit_requested, 1, __ATOMIC_RELEASE);
+}
+
+bool runtime_take_exit_request(void)
+{
+   return __atomic_exchange_n(&exit_requested, 0, __ATOMIC_ACQ_REL) != 0;
+}
 
 EMSCRIPTEN_KEEPALIVE uint32_t runtime_get_frame_count(void)
 {

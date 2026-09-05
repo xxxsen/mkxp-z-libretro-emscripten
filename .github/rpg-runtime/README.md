@@ -36,6 +36,15 @@ Frames alone never imply restore success. These observations require no
 preload script, map position, fixture variable, or host-provided proof.
 They do not alter the mkxp sandbox bindings or the checkpoint format.
 
+`Module._runtime_request_exit()` publishes an atomic shutdown request. The core
+loop consumes it before visibility, pause or graphics checks and runs the normal
+RetroArch `main_exit` path. This unloads the game, stops audio and releases browser
+observers before Emscripten executes C++ global destructors and terminates workers.
+Hosts wait for `Module.onExit` before removing the canvas; they must not directly
+force-exit a running threaded core. Native regressions cover coalescing requests
+and the core-loop boundary. No host route, game data or keyboard binding is part
+of this private lifecycle ABI.
+
 Browser resize observations publish positive dimensions and pixel ratio through
 the platform atomics only. The graphics driver's window check applies changed
 dimensions on the canvas-owning render thread. This avoids mutating layout in

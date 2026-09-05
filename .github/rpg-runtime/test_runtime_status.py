@@ -23,6 +23,33 @@ def patch_module():
 
 
 class RuntimeStatusTests(unittest.TestCase):
+    def test_browser_exit_only_requests_teardown_on_the_core_loop(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "status.so"
+            subprocess.run([
+                "cc", "-std=c11", "-Wall", "-Wextra", "-Werror", "-shared", "-fPIC",
+                str(RECIPE / "runtime-status.c"), "-o", str(output),
+            ], check=True, capture_output=True)
+            status = ctypes.CDLL(str(output))
+            self.assertEqual(status.runtime_take_exit_request(), 0)
+            status.runtime_request_exit()
+            status.runtime_request_exit()
+            self.assertEqual(status.runtime_take_exit_request(), 1)
+            self.assertEqual(status.runtime_take_exit_request(), 0)
+
+    def test_exit_is_consumed_before_hidden_paused_or_graphics_loop_work(self):
+        source = (ROOT / "retroarch/retroarch.c").read_text(encoding="utf-8")
+        patch = patch_module()
+        patched = patch.patch_mainloop(source)
+        loop = patched.split("void emscripten_mainloop(void)", 1)[1]
+        self.assertLess(loop.index("runtime_take_exit_request()"), loop.index("config_get_ptr()"))
+        self.assertLess(loop.index("main_exit(NULL)"), loop.index("emscripten_force_exit(0)"))
+        self.assertLess(loop.index("emscripten_force_exit(0)"), loop.index("platform_emscripten_should_drop_iter()"))
+        with self.assertRaises(ValueError):
+            patch.patch_mainloop(patched)
+        with self.assertRaises(ValueError):
+            patch.patch_mainloop(source.replace("void emscripten_mainloop(void)", "void drift(void)"))
+
     def test_frames_do_not_report_a_restore_and_failures_do_not_report_success(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "status.so"
