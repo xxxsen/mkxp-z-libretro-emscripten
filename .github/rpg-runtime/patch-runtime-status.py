@@ -68,7 +68,8 @@ def patch_video(source: str) -> str:
     return replace_exact(
         source, "   video_st->frame_count++;\n",
         "   video_st->frame_count++;\n" + guarded(
-            "   if (render_frame && data && (video_st->flags & VIDEO_FLAG_ACTIVE))\n"
+            "   if (render_frame && data && (video_st->flags & VIDEO_FLAG_ACTIVE) &&\n"
+            "       runloop_st->current_core_type == CORE_TYPE_PLAIN)\n"
             "      runtime_frame_presented();"
         ),
     )

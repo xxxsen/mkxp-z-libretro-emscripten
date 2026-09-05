@@ -96,6 +96,9 @@ build_frontend() {
   python3 "$source_root/.github/rpg-runtime/patch-remote-content.py" \
     --source "$source_root" \
     --emscripten-root "$(em-config EMSCRIPTEN_ROOT)"
+  # FetchFS changes a system-library C++ source. Never reuse the image's
+  # precompiled WasmFS in place of the patched source (container-local only).
+  emcc --clear-cache
   install -m 0644 "$artifacts/mkxp-z_libretro.a" \
     "$source_root/retroarch/libretro_emscripten.a"
   emmake make -C "$source_root/retroarch" -f Makefile.emscripten \

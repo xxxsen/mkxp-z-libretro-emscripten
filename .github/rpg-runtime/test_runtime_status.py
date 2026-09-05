@@ -65,6 +65,7 @@ class RuntimeStatusTests(unittest.TestCase):
         source = (ROOT / "retroarch/gfx/video_driver.c").read_text(encoding="utf-8")
         patched = patch_module().patch_video(source)
         self.assertIn("render_frame && data && (video_st->flags & VIDEO_FLAG_ACTIVE)", patched)
+        self.assertIn("runloop_st->current_core_type == CORE_TYPE_PLAIN", patched)
         self.assertLess(patched.index("video_st->frame_count++;"),
                         patched.index("runtime_frame_presented();"))
 

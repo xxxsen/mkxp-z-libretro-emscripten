@@ -29,7 +29,8 @@ restored game input can resume.
 The browser can read `Module._runtime_get_frame_count()` and
 `Module._runtime_get_restore_result()` from the main thread without invoking
 RetroArch GL commands. Both read atomics maintained by the core thread. Frame
-count advances only for presented core frames; restore result is zero while
+count advances only for presented game-core frames, never RetroArch's dummy
+core after a failed content load; restore result is zero while
 pending, one after successful deserialization, and minus one on failure.
 Frames alone never imply restore success. These observations require no
 preload script, map position, fixture variable, or host-provided proof.
@@ -60,6 +61,12 @@ the expected `Content-Range` and byte length. It never falls back to a whole
 archive download. The host remains responsible for creating the FetchFS
 manifest and for passing content URLs; this fork does not know any Retrom API
 or launch identifier.
+
+The pinned FetchFS URL join is corrected at the base/path boundary: directory
+paths already start with a slash, so appending another slash would request a
+different URL. Escaped paths and query strings are preserved. The frontend
+build clears only its ephemeral container's Emscripten system-library cache
+after patching, ensuring a precompiled WasmFS cannot bypass this correction.
 
 Metadata digests describe the uploaded bytes for cache diagnostics. A consumer
 identifies the runtime by repository, tag, tag commit, asset filenames and
