@@ -23,6 +23,18 @@ def save_function(source):
 
 
 class StateIOTests(unittest.TestCase):
+    def test_release_verifier_requires_current_state_abi_and_rejects_legacy_or_partial_exports(self):
+        spec = importlib.util.spec_from_file_location("verify", RECIPE / "verify-release.py")
+        verify = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(verify)
+        required = [b"_runtime_get_frame_count", b"_runtime_request_exit",
+                    b"_runtime_get_state_result", b"_runtime_request_state"]
+        verify.validate_browser_abi(b" ".join(required))
+        for missing in required:
+            with self.assertRaisesRegex(ValueError, "RPG_RUNTIME_RELEASE_STATE_ABI_INVALID"):
+                verify.validate_browser_abi(b" ".join(value for value in required if value != missing)
+                                            + b" _runtime_get_restore_result")
+
     def test_state_commands_use_the_owner_loop_and_completed_blocking_writer(self):
         source = (ROOT / "retroarch/retroarch.c").read_text()
         patched = patcher().patch_mainloop(source)

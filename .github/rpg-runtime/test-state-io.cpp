@@ -28,7 +28,7 @@ template <class T> struct BoundedAllocator {
 static std::vector<uint8_t, BoundedAllocator<uint8_t>> buffer;
 struct intfstream_t { int unused; };
 struct settings_t { struct { bool savestate_file_compression; } bools; } settings;
-static bool open_failure, truncate_failure, write_failure, close_failure;
+static bool open_failure, truncate_failure, write_failure, close_failure, flush_failure;
 static unsigned closes, truncates;
 static settings_t* config_get_ptr() { return &settings; }
 static bool core_info_current_supports_savestate() { return true; }
@@ -63,6 +63,7 @@ static int64_t intfstream_write(intfstream_t*, const void* data, uint64_t size) 
   return size;
 }
 static int intfstream_close(intfstream_t*) { ++closes; return close_failure ? -1 : 0; }
+[[maybe_unused]] static int intfstream_flush(intfstream_t*) { return flush_failure ? -1 : 0; }
 #define RETRO_VFS_FILE_ACCESS_WRITE 1
 #define RETRO_VFS_FILE_ACCESS_HINT_NONE 0
 #define RARCH_LOG(...) ((void)0)
@@ -74,17 +75,18 @@ static void reset() {
   buffer.swap(empty);
   peak = 0;
   closes = truncates = 0;
-  open_failure = truncate_failure = write_failure = close_failure = false;
+  open_failure = truncate_failure = write_failure = close_failure = flush_failure = false;
 }
 int main() {
   limit = payload_size + payload_size / 2;
   try {
-    for (int failure = 0; failure < 5; ++failure) {
+    for (int failure = 0; failure < 6; ++failure) {
       reset();
       open_failure = failure == 1;
       truncate_failure = failure == 2;
       write_failure = failure == 3;
       close_failure = failure == 4;
+      flush_failure = failure == 5;
       bool success = content_auto_save_state("game.state");
       assert(success == (failure == 0));
       assert(closes == (open_failure ? 0u : 1u));

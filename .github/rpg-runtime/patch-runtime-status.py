@@ -65,7 +65,8 @@ def patch_blocking_save(source: str) -> str:
         "   if (\n#ifdef EMSCRIPTEN\n"
         "       (!settings->bools.savestate_file_compression &&\n"
         "        intfstream_truncate(file, _len) != 0) ||\n#endif\n"
-        "       _len != (size_t)intfstream_write(file, serial_data, _len))")
+        "       _len != (size_t)intfstream_write(file, serial_data, _len) ||\n"
+        "       intfstream_flush(file) != 0)")
     save = replace_exact(save,
         "   intfstream_close(file);\n   free(serial_data);\n   free(file);",
         "   bool closed = intfstream_close(file) == 0;\n   free(serial_data);\n   free(file);")

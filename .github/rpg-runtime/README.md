@@ -48,8 +48,8 @@ WasmFS states it preallocates the exact RASTATE length before writing. A
 power-of-two core payload plus the 24-byte envelope otherwise makes the memory
 file's vector double on its final write while retaining the old allocation,
 which can exhaust the Wasm heap after restoration. Completion is reported only
-after writing, closing and freeing the serialization buffer; open, truncate,
-write and close failures must never report success. File length is not a
+after writing, flushing, closing and freeing the serialization buffer; open, truncate,
+write, flush and close failures must never report success. File length is not a
 completion signal, since preallocation publishes that length before filling
 the file. Restore uses the normal RetroArch load path and reports successful
 deserialization only after releasing its load buffer. Hosts remove temporary
