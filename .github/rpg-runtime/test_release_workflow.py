@@ -92,6 +92,17 @@ class ReleaseWorkflowTests(unittest.TestCase):
                         builder.index('wasm_sha=$(sha256sum'))
         self.assertNotIn('"$output/mkxp-z_libretro.symbols"', builder)
 
+    def test_frontend_prepares_sdk_ownership_before_dropping_to_the_calling_user(self):
+        builder = (ROOT / ".github/rpg-runtime/build-web.sh").read_text()
+        frontend = builder.split('--hostname rpg-runtime-mkxp-frontend', 1)[1]
+        # The pinned SDK is owned by UID 1000, while CI uses UID 1001. FetchFS
+        # patches and the rebuilt system-library cache must work for either.
+        ownership = 'chown -R "$1:$2" "$(em-config EMSCRIPTEN_ROOT)"'
+        self.assertIn(ownership, frontend)
+        self.assertLess(frontend.index(ownership), frontend.index('exec setpriv'))
+        self.assertIn('--volume "$source_input:/input:ro"', frontend)
+        self.assertNotIn('chown -R "$1:$2" /input', frontend)
+
 
 if __name__ == "__main__":
     unittest.main()
