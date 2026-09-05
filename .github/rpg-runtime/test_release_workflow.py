@@ -8,6 +8,15 @@ CHECKPOINT = "bf5f525e864b162bea0789d46932e5f800b80076"
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_release_uses_the_same_verified_builder_as_pfb(self) -> None:
+        workflow = (ROOT / ".github/workflows/rpg-runtime-release.yml").read_text()
+        self.assertIn('.github/rpg-runtime/build-web.sh "$output"', workflow)
+        self.assertNotIn("emmake make", workflow)
+        self.assertNotIn("meson setup", workflow)
+        self.assertEqual(workflow.count("uses: actions/checkout@"), 1)
+        self.assertLess(workflow.index("build-web.sh"), workflow.index("verify-release.py"))
+        self.assertIn('test "$(git cat-file -t "refs/tags/$GITHUB_REF_NAME")" = tag', workflow)
+
     def test_release_identity_uses_the_organization_and_core_tag_namespace(self) -> None:
         contract = json.loads((ROOT / "retrom-fork.json").read_text(encoding="utf-8"))
         workflow = (ROOT / ".github/workflows/rpg-runtime-release.yml").read_text(encoding="utf-8")

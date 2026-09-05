@@ -17,6 +17,12 @@ That candidate is intended for the aggregate runtime's local asset override
 and Retrom product-chain validation. Only a tag run validates release metadata
 and creates the immutable GitHub Release.
 
+Both tag/dispatch CI and PFB call `build-web.sh`, including its pinned toolchain,
+all native patches, bounded-memory stages and verified intermediate cache. CI
+checks out the fixed sources once and does not maintain a second compilation
+recipe. A tag run revalidates the resulting pair with the actual immutable
+release identity before upload; local diagnostic symbol maps are not assets.
+
 The tagged superproject fixes the exact mkxp-z and RetroArch gitlinks. A small
 build patch replaces mkxp-z's random sandbox function-type identifiers with
 identifiers derived from the function type name. This is required because the
