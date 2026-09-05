@@ -50,6 +50,8 @@ build_core() {
     "$source_root/.github/rpg-runtime/mkxp-deterministic-bindings.patch"
   python3 "$source_root/.github/rpg-runtime/patch-runtime.py" \
     --source "$source_root"
+  python3 "$source_root/.github/rpg-runtime/patch-build-memory.py" \
+    --source "$source_root"
   mkdir -p "$source_root/mkxp-z/libretro/build/libretro-stage1"
   cp -a "$artifacts/stage1/." \
     "$source_root/mkxp-z/libretro/build/libretro-stage1/"
@@ -75,7 +77,7 @@ EOF
     -Dlibretro=true \
     -Dlibretro_save_states=true \
     -Demscripten_threaded=true
-  ninja -C "$source_root/mkxp-z/build"
+  ninja -j 2 -C "$source_root/mkxp-z/build"
   install -m 0644 "$source_root/mkxp-z/build/mkxp-z_libretro.a" \
     "$artifacts/mkxp-z_libretro.a"
 }
@@ -89,9 +91,16 @@ build_frontend() {
   export GIT_CONFIG_GLOBAL=/dev/null SOURCE_DATE_EPOCH=0 TZ=UTC
 
   cp -a "$root/." "$source_root"
+  python3 "$source_root/.github/rpg-runtime/patch-runtime-status.py" \
+    --source "$source_root"
+  python3 "$source_root/.github/rpg-runtime/patch-canvas-resize.py" \
+    --source "$source_root"
   python3 "$source_root/.github/rpg-runtime/patch-remote-content.py" \
     --source "$source_root" \
     --emscripten-root "$(em-config EMSCRIPTEN_ROOT)"
+  # FetchFS changes a system-library C++ source. Never reuse the image's
+  # precompiled WasmFS in place of the patched source (container-local only).
+  emcc --clear-cache
   install -m 0644 "$artifacts/mkxp-z_libretro.a" \
     "$source_root/retroarch/libretro_emscripten.a"
   emmake make -C "$source_root/retroarch" -f Makefile.emscripten \
@@ -107,6 +116,9 @@ build_frontend() {
     "$output/mkxp-z_libretro.js"
   install -m 0644 "$source_root/retroarch/mkxp-z_libretro.wasm" \
     "$output/mkxp-z_libretro.wasm"
+  # Keep diagnostics outside the closed release/candidate asset directory.
+  install -m 0644 "$source_root/retroarch/mkxp-z_libretro.js.symbols" \
+    "$artifacts/mkxp-z_libretro.symbols"
   commit=$(git -C "$source_root" rev-parse HEAD)
   python3 "$source_root/.github/rpg-runtime/verify-release.py" \
     --source "$source_root" \
@@ -141,6 +153,13 @@ esac
 output=${1:?absolute empty output directory is required}
 work=$(mktemp -d "${TMPDIR:-/tmp}/retrom-mkxp-candidate.XXXXXX")
 trap 'rm -rf "$work"' EXIT INT TERM
+python3 "$root/.github/rpg-runtime/source-snapshot.py" --source "$root" --output "$work/input"
+source_input="$work/input"
+cache_root="$root/.cache/rpg-runtime-build"
+mkdir -p "$cache_root/meson"
+python3 "$root/.github/rpg-runtime/build-cache.py" wrap "$root/mkxp-z/subprojects/libiconv.wrap" "$cache_root/meson"
+python3 "$root/.github/rpg-runtime/build-cache.py" wrap "$root/mkxp-z/subprojects/libidn.wrap" "$cache_root/meson"
+stage1_key=$(python3 "$root/.github/rpg-runtime/build-cache.py" key "$source_input")
 mkdir -p \
   "$work/artifacts" \
   "$work/stage1/user-cache" "$work/stage1/user-config" \
@@ -149,8 +168,10 @@ mkdir -p \
 build_uid=$(id -u)
 build_gid=$(id -g)
 
+stage1_cached=$(python3 "$root/.github/rpg-runtime/build-cache.py" restore "$cache_root/stage1/$stage1_key" "$work/artifacts/stage1")
+if [[ "$stage1_cached" != hit ]]; then
 docker run --rm --platform linux/amd64 --hostname rpg-runtime-mkxp-stage1 \
-  --volume "$root:/input:ro" \
+  --volume "$source_input:/input:ro" \
   --volume "$work:/work" \
   --workdir /work \
   "$stage1_image" \
@@ -162,10 +183,19 @@ docker run --rm --platform linux/amd64 --hostname rpg-runtime-mkxp-stage1 \
       env XDG_CACHE_HOME=/work/stage1/user-cache XDG_CONFIG_HOME=/work/stage1/user-config \
       /input/.github/rpg-runtime/build-web.sh --stage1-in-container /work/stage1 /work/artifacts
   ' bash "$build_uid" "$build_gid"
+
+python3 "$root/.github/rpg-runtime/build-cache.py" store "$work/artifacts/stage1" "$cache_root/stage1/$stage1_key"
+fi
 find "$work/stage1" -mindepth 1 -delete
 
+core_key=$(python3 "$root/.github/rpg-runtime/build-cache.py" core-key "$source_input")
+core_cached=$(python3 "$root/.github/rpg-runtime/build-cache.py" restore "$cache_root/core/$core_key" "$work/core-cache")
+if [[ "$core_cached" == hit ]]; then
+  install -m 0644 "$work/core-cache/mkxp-z_libretro.a" "$work/artifacts/mkxp-z_libretro.a"
+else
 docker run --rm --platform linux/amd64 --hostname rpg-runtime-mkxp-core \
-  --volume "$root:/input:ro" \
+  --volume "$source_input:/input:ro" \
+  --volume "$cache_root/meson:/cache" \
   --volume "$work:/work" \
   --volume "$output:/output" \
   --workdir /work \
@@ -176,13 +206,17 @@ docker run --rm --platform linux/amd64 --hostname rpg-runtime-mkxp-core \
     apt-get install -y --no-install-recommends ninja-build util-linux
     python3 -m pip install --no-cache-dir cmake==3.28.3 meson==1.3.2
     exec setpriv --reuid="$1" --regid="$2" --clear-groups \
-      env XDG_CACHE_HOME=/work/core/user-cache XDG_CONFIG_HOME=/work/core/user-config \
+      env MESON_PACKAGE_CACHE_DIR=/cache XDG_CACHE_HOME=/work/core/user-cache XDG_CONFIG_HOME=/work/core/user-config \
       /input/.github/rpg-runtime/build-web.sh --core-in-container /work/core /work/artifacts
   ' bash "$build_uid" "$build_gid"
+mkdir -p "$work/core-cache"
+install -m 0644 "$work/artifacts/mkxp-z_libretro.a" "$work/core-cache/mkxp-z_libretro.a"
+python3 "$root/.github/rpg-runtime/build-cache.py" store "$work/core-cache" "$cache_root/core/$core_key"
+fi
 find "$work/core" -mindepth 1 -delete
 
 docker run --rm --platform linux/amd64 --hostname rpg-runtime-mkxp-frontend \
-  --volume "$root:/input:ro" \
+  --volume "$source_input:/input:ro" \
   --volume "$work:/work" \
   --volume "$output:/output" \
   --workdir /work \
@@ -195,3 +229,9 @@ docker run --rm --platform linux/amd64 --hostname rpg-runtime-mkxp-frontend \
       env XDG_CACHE_HOME=/work/frontend/user-cache XDG_CONFIG_HOME=/work/frontend/user-config \
       /input/.github/rpg-runtime/build-web.sh --frontend-in-container /work/frontend /work/artifacts /output
   ' bash "$build_uid" "$build_gid"
+
+wasm_sha=$(sha256sum "$output/mkxp-z_libretro.wasm")
+wasm_sha=${wasm_sha%% *}
+mkdir -p "$cache_root/symbols"
+install -m 0644 "$work/artifacts/mkxp-z_libretro.symbols" \
+  "$cache_root/symbols/$wasm_sha.symbols"

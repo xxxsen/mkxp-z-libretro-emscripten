@@ -8,6 +8,27 @@ CHECKPOINT = "bf5f525e864b162bea0789d46932e5f800b80076"
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_quality_prepares_both_locked_fetchfs_source_files(self) -> None:
+        workflow = (ROOT / ".github/workflows/rpg-runtime-quality.yml").read_text()
+        for source in ("src/lib/libwasmfs_fetch.js", "system/lib/wasmfs/backends/fetch_backend.cpp"):
+            self.assertIn("https://raw.githubusercontent.com/emscripten-core/emscripten/4.0.8/" + source,
+                          workflow)
+
+    def test_upstream_demo_does_not_run_for_retrom_work_branches_or_prs(self) -> None:
+        workflow = (ROOT / ".github/workflows/autobuild.yml").read_text()
+        triggers = workflow.split("permissions:", 1)[0]
+        self.assertIn('push:\n    branches: [main]', triggers)
+        self.assertIn('pull_request:\n    branches: [main]', triggers)
+
+    def test_release_uses_the_same_verified_builder_as_pfb(self) -> None:
+        workflow = (ROOT / ".github/workflows/rpg-runtime-release.yml").read_text()
+        self.assertIn('.github/rpg-runtime/build-web.sh "$output"', workflow)
+        self.assertNotIn("emmake make", workflow)
+        self.assertNotIn("meson setup", workflow)
+        self.assertEqual(workflow.count("uses: actions/checkout@"), 1)
+        self.assertLess(workflow.index("build-web.sh"), workflow.index("verify-release.py"))
+        self.assertIn('test "$(git cat-file -t "refs/tags/$GITHUB_REF_NAME")" = tag', workflow)
+
     def test_release_identity_uses_the_organization_and_core_tag_namespace(self) -> None:
         contract = json.loads((ROOT / "retrom-fork.json").read_text(encoding="utf-8"))
         workflow = (ROOT / ".github/workflows/rpg-runtime-release.yml").read_text(encoding="utf-8")
@@ -39,6 +60,12 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn('test -f "$output/rpg-runtime-release.json"', candidate)
         self.assertIn('verify-release.py"', builder)
         self.assertIn('--source "$source_root"', builder)
+        self.assertIn('patch-runtime-status.py"', builder)
+        self.assertIn('source-snapshot.py" --source "$root" --output "$work/input"', builder)
+        self.assertEqual(builder.count('--volume "$source_input:/input:ro"'), 3)
+        self.assertIn('build-cache.py" restore', builder)
+        self.assertIn('build-cache.py" store', builder)
+        self.assertIn("MESON_PACKAGE_CACHE_DIR=/cache", builder)
         self.assertIn("--core-id mkxp", candidate)
         self.assertIn("stage1_image=ubuntu@sha256:", builder)
         self.assertIn("emscripten_image=emscripten/emsdk@sha256:", builder)
@@ -56,6 +83,14 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("c = 'emcc'", builder)
         self.assertNotIn("RUBYOPT=-rset", builder)
         self.assertNotIn("/var/run/docker.sock", builder)
+
+    def test_local_symbols_are_keyed_by_the_output_wasm_not_published_as_assets(self):
+        builder = (ROOT / ".github/rpg-runtime/build-web.sh").read_text()
+        self.assertIn('sha256sum "$output/mkxp-z_libretro.wasm"', builder)
+        self.assertIn('"$cache_root/symbols/$wasm_sha.symbols"', builder)
+        self.assertLess(builder.rindex('--frontend-in-container /work/frontend'),
+                        builder.index('wasm_sha=$(sha256sum'))
+        self.assertNotIn('"$output/mkxp-z_libretro.symbols"', builder)
 
 
 if __name__ == "__main__":

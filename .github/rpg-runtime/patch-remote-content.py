@@ -12,6 +12,9 @@ from typing import Callable
 EMSCRIPTEN_FETCHFS_4_0_8_SHA256 = (
     "1065a11fb336e75b9e0164ca7058bf9d417da0d7463b40a0c8e67a770088678e"
 )
+EMSCRIPTEN_FETCH_BACKEND_4_0_8_SHA256 = (
+    "1ff8036c23e9defca0b4987262fcacf6c388c7405d63e3946858eb56c8fe1f33"
+)
 
 OLD_FETCH_DECLARATIONS = """   char *fetch_manifest = getenv(\"FETCH_MANIFEST\");
    char *fetch_base_dir = getenv(\"FETCH_BASE_DIR\");"""
@@ -168,6 +171,22 @@ def patch_emscripten(source: str) -> str:
     )
 
 
+def patch_fetch_backend_cpp(source: str) -> str:
+    # FetchDirectory supplies a leading slash, while callers may already supply
+    # a trailing slash in the base. Join the boundary once; do not normalize or
+    # decode the remainder of a signed/escaped remote path.
+    return replace_exact(
+        source,
+        '  return baseUrl + "/" + filePath;',
+        '''  std::string prefix = baseUrl;
+  if (!prefix.empty() && prefix.back() == '/') {
+    prefix.pop_back();
+  }
+  return prefix + (filePath.front() == '/' ? "" : "/") + filePath;''',
+        "RPG_RUNTIME_FETCHFS_URL_JOIN_INVALID",
+    )
+
+
 def write_patched(path: Path, patcher: Callable[[str], str]) -> None:
     source = path.read_text(encoding="utf-8")
     patched = patcher(source)
@@ -183,6 +202,9 @@ def main() -> int:
     fetchfs = args.emscripten_root / "src/lib/libwasmfs_fetch.js"
     if hashlib.sha256(fetchfs.read_bytes()).hexdigest() != EMSCRIPTEN_FETCHFS_4_0_8_SHA256:
         raise SystemExit("RPG_RUNTIME_EMSCRIPTEN_FETCHFS_SOURCE_INVALID")
+    fetch_backend = args.emscripten_root / "system/lib/wasmfs/backends/fetch_backend.cpp"
+    if hashlib.sha256(fetch_backend.read_bytes()).hexdigest() != EMSCRIPTEN_FETCH_BACKEND_4_0_8_SHA256:
+        raise SystemExit("RPG_RUNTIME_EMSCRIPTEN_FETCH_BACKEND_SOURCE_INVALID")
 
     try:
         write_patched(
@@ -190,6 +212,7 @@ def main() -> int:
             patch_retroarch,
         )
         write_patched(fetchfs, patch_emscripten)
+        write_patched(fetch_backend, patch_fetch_backend_cpp)
     except ValueError as error:
         raise SystemExit(str(error)) from error
     return 0

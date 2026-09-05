@@ -31,6 +31,10 @@ jobs:
           mkdir -p "${{ runner.temp }}/emscripten/src/lib"
           mv "${{ runner.temp }}/libwasmfs_fetch.js" \
             "${{ runner.temp }}/emscripten/src/lib/libwasmfs_fetch.js"
+          mkdir -p "${{ runner.temp }}/emscripten/system/lib/wasmfs/backends"
+          curl --fail --location --retry 3 \
+            --output "${{ runner.temp }}/emscripten/system/lib/wasmfs/backends/fetch_backend.cpp" \
+            https://raw.githubusercontent.com/emscripten-core/emscripten/4.0.8/system/lib/wasmfs/backends/fetch_backend.cpp
           python3 .github/rpg-runtime/patch-remote-content.py \
             --source "$GITHUB_WORKSPACE" \
             --emscripten-root "${{ runner.temp }}/emscripten"

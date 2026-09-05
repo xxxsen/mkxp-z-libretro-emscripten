@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import importlib.util
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -16,6 +18,38 @@ SPEC.loader.exec_module(PATCH)
 
 
 class RemoteContentPatchTests(unittest.TestCase):
+    def test_fetch_url_join_preserves_exact_remote_path(self) -> None:
+        source = '''const std::string FetchBackend::getFileURL(const std::string& filePath) {
+  if (filePath == "") {
+    return baseUrl;
+  }
+  return baseUrl + "/" + filePath;
+}'''
+        patcher = getattr(PATCH, "patch_fetch_backend_cpp", lambda value: value)
+        body = patcher(source).replace("FetchBackend::getFileURL", "getFileURL")
+        program = '#include <string>\n#include <iostream>\nstd::string baseUrl;\n' + body + '''
+int main() {
+  for (auto base : {"https://assets.example", "https://assets.example/", "https://assets.example/prefix/"}) {
+    baseUrl = base;
+    for (auto path : {"/project/game.zip", "/pack/a%20b.zip?version=1"}) {
+      std::cout << getFileURL(path) << "\\n";
+    }
+  }
+  baseUrl = "https://assets.example/exact.zip";
+  std::cout << getFileURL("") << "\\n";
+}'''
+        with tempfile.TemporaryDirectory() as directory:
+            binary = Path(directory) / "url-test"
+            subprocess.run(["c++", "-std=c++17", "-Wall", "-Wextra", "-Werror", "-x", "c++", "-", "-o", str(binary)],
+                           input=program, text=True, check=True, capture_output=True)
+            result = subprocess.run([str(binary)], text=True, check=True, capture_output=True)
+        self.assertEqual(result.stdout.splitlines(), [
+            "https://assets.example/project/game.zip", "https://assets.example/pack/a%20b.zip?version=1",
+            "https://assets.example/project/game.zip", "https://assets.example/pack/a%20b.zip?version=1",
+            "https://assets.example/prefix/project/game.zip", "https://assets.example/prefix/pack/a%20b.zip?version=1",
+            "https://assets.example/exact.zip",
+        ])
+
     def test_manifest_base_url_does_not_use_getline_capacity_as_length(self) -> None:
         source = (
             MODULE_PATH.parents[2]
