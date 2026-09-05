@@ -83,6 +83,8 @@ def main() -> int:
         or b"FETCHFS_RANGE_REQUIRED" not in js_bytes
         or b"FETCHFS_RANGE_PROTOCOL_INVALID" not in js_bytes
         or b"FETCHFS_RANGE_LENGTH_INVALID" not in js_bytes
+        or b"_runtime_get_frame_count" not in js_bytes
+        or b"_runtime_get_restore_result" not in js_bytes
     ):
         raise SystemExit("RPG_RUNTIME_RELEASE_REMOTE_CONTENT_INVALID")
 
