@@ -225,6 +225,9 @@ docker run --rm --platform linux/amd64 --hostname rpg-runtime-mkxp-frontend \
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
     apt-get install -y --no-install-recommends util-linux
+    # The image owns its SDK as UID 1000; CI and PFB may use another UID.
+    # Only the disposable container SDK is writable, never the input mount.
+    chown -R "$1:$2" "$(em-config EMSCRIPTEN_ROOT)"
     exec setpriv --reuid="$1" --regid="$2" --clear-groups \
       env XDG_CACHE_HOME=/work/frontend/user-cache XDG_CONFIG_HOME=/work/frontend/user-config \
       /input/.github/rpg-runtime/build-web.sh --frontend-in-container /work/frontend /work/artifacts /output
