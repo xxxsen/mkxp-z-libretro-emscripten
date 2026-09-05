@@ -93,6 +93,8 @@ build_frontend() {
   cp -a "$root/." "$source_root"
   python3 "$source_root/.github/rpg-runtime/patch-runtime-status.py" \
     --source "$source_root"
+  python3 "$source_root/.github/rpg-runtime/patch-canvas-resize.py" \
+    --source "$source_root"
   python3 "$source_root/.github/rpg-runtime/patch-remote-content.py" \
     --source "$source_root" \
     --emscripten-root "$(em-config EMSCRIPTEN_ROOT)"

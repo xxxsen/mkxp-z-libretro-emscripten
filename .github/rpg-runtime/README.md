@@ -36,6 +36,13 @@ Frames alone never imply restore success. These observations require no
 preload script, map position, fixture variable, or host-provided proof.
 They do not alter the mkxp sandbox bindings or the checkpoint format.
 
+Browser resize observations publish positive dimensions and pixel ratio through
+the platform atomics only. The graphics driver's window check applies changed
+dimensions on the canvas-owning render thread. This avoids mutating layout in
+ResizeObserver delivery or synchronously proxying canvas changes across threads;
+unchanged dimensions never reset the drawing buffer. A native C regression runs
+the patched upstream callbacks with explicit browser/render ownership.
+
 Explicit local builds retain verified stage-one/core artifacts and Meson source
 archives under this worktree's ignored `.cache/rpg-runtime-build/`. A stage-one
 cache hit requires identical MKXP source, relevant stage recipe and toolchain bytes and a matching
