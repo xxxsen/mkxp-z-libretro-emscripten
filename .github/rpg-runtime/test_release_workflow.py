@@ -8,6 +8,18 @@ CHECKPOINT = "bf5f525e864b162bea0789d46932e5f800b80076"
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_quality_prepares_both_locked_fetchfs_source_files(self) -> None:
+        workflow = (ROOT / ".github/workflows/rpg-runtime-quality.yml").read_text()
+        for source in ("src/lib/libwasmfs_fetch.js", "system/lib/wasmfs/backends/fetch_backend.cpp"):
+            self.assertIn("https://raw.githubusercontent.com/emscripten-core/emscripten/4.0.8/" + source,
+                          workflow)
+
+    def test_upstream_demo_does_not_run_for_retrom_work_branches_or_prs(self) -> None:
+        workflow = (ROOT / ".github/workflows/autobuild.yml").read_text()
+        triggers = workflow.split("permissions:", 1)[0]
+        self.assertIn('push:\n    branches: [main]', triggers)
+        self.assertIn('pull_request:\n    branches: [main]', triggers)
+
     def test_release_uses_the_same_verified_builder_as_pfb(self) -> None:
         workflow = (ROOT / ".github/workflows/rpg-runtime-release.yml").read_text()
         self.assertIn('.github/rpg-runtime/build-web.sh "$output"', workflow)
