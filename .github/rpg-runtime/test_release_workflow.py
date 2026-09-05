@@ -63,6 +63,14 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertNotIn("RUBYOPT=-rset", builder)
         self.assertNotIn("/var/run/docker.sock", builder)
 
+    def test_local_symbols_are_keyed_by_the_output_wasm_not_published_as_assets(self):
+        builder = (ROOT / ".github/rpg-runtime/build-web.sh").read_text()
+        self.assertIn('sha256sum "$output/mkxp-z_libretro.wasm"', builder)
+        self.assertIn('"$cache_root/symbols/$wasm_sha.symbols"', builder)
+        self.assertLess(builder.rindex('--frontend-in-container /work/frontend'),
+                        builder.index('wasm_sha=$(sha256sum'))
+        self.assertNotIn('"$output/mkxp-z_libretro.symbols"', builder)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -27,14 +27,35 @@ libretro `retro_unserialize`; without the guard the next frame aborts before
 restored game input can resume.
 
 The browser can read `Module._runtime_get_frame_count()` and
-`Module._runtime_get_restore_result()` from the main thread without invoking
+`Module._runtime_get_state_result()` from the main thread without invoking
 RetroArch GL commands. Both read atomics maintained by the core thread. Frame
 count advances only for presented game-core frames, never RetroArch's dummy
-core after a failed content load; restore result is zero while
-pending, one after successful deserialization, and minus one on failure.
+core after a failed content load; state result is zero while
+pending, one after success, and minus one on failure.
 Frames alone never imply restore success. These observations require no
 preload script, map position, fixture variable, or host-provided proof.
 They do not alter the mkxp sandbox bindings or the checkpoint format.
+
+`Module._runtime_request_state(1)` requests a save, and operation `2` requests
+a restore. The function only atomically publishes intent and returns one when
+accepted, zero for an invalid or overlapping request. The owning loop consumes
+each request once, including when hidden or paused; a new request clears the
+previous receipt atomically. Hosts must not synthesize short-lived save/load
+hotkeys or invoke a RetroArch GL command from the browser thread.
+
+Saving uses RetroArch's existing blocking writer on its core thread. For raw
+WasmFS states it preallocates the exact RASTATE length before writing. A
+power-of-two core payload plus the 24-byte envelope otherwise makes the memory
+file's vector double on its final write while retaining the old allocation,
+which can exhaust the Wasm heap after restoration. Completion is reported only
+after writing, closing and freeing the serialization buffer; open, truncate,
+write and close failures must never report success. File length is not a
+completion signal, since preallocation publishes that length before filling
+the file. Restore uses the normal RetroArch load path and reports successful
+deserialization only after releasing its load buffer. Hosts remove temporary
+state files after consuming the corresponding receipt. Native tests execute
+the actual patched writer with a bounded allocator, exact byte verification
+and each I/O failure; compressed states retain their existing behavior.
 
 `Module._runtime_request_exit()` publishes an atomic shutdown request. The core
 loop consumes it before visibility, pause or graphics checks and runs the normal
@@ -68,6 +89,12 @@ compilation uses two jobs, wasm-ld one worker, and Binaryen two workers. This
 avoids combining the large Ruby program into one memory-intensive LTO module,
 without changing the threaded runtime ABI or save format. Core artifacts are
 verified and cached before linking; a frontend-only change does not rebuild them.
+
+Local frontend builds retain an optimized function-index symbol map under
+`.cache/rpg-runtime-build/symbols/<wasm-sha256>.symbols`. Match the exact Wasm
+digest before interpreting a browser's `wasm-function[index]` stack. The map
+stays outside the closed candidate/release payload and does not change the
+sandbox binding hash or checkpoint format.
 
 Remote `.mkxpz` project and RTP archives are exposed through RetroArch's
 WasmFS FetchFS backend. The Retrom build makes that backend fail closed: the

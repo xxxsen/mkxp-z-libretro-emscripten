@@ -9,7 +9,8 @@
 #endif
 
 static uint32_t presented_frames;
-static int restore_result;
+enum { STATE_RUNNING = 3, STATE_SUCCEEDED = 4, STATE_FAILED = -1 };
+static int state_operation;
 static int exit_requested;
 
 /* The browser must not execute C++ destructors while the core/audio threads
@@ -29,9 +30,10 @@ EMSCRIPTEN_KEEPALIVE uint32_t runtime_get_frame_count(void)
    return __atomic_load_n(&presented_frames, __ATOMIC_ACQUIRE);
 }
 
-EMSCRIPTEN_KEEPALIVE int runtime_get_restore_result(void)
+EMSCRIPTEN_KEEPALIVE int runtime_get_state_result(void)
 {
-   return __atomic_load_n(&restore_result, __ATOMIC_ACQUIRE);
+   int state = __atomic_load_n(&state_operation, __ATOMIC_ACQUIRE);
+   return state == STATE_SUCCEEDED ? 1 : state == STATE_FAILED ? -1 : 0;
 }
 
 void runtime_frame_presented(void)
@@ -39,12 +41,30 @@ void runtime_frame_presented(void)
    __atomic_fetch_add(&presented_frames, 1, __ATOMIC_RELEASE);
 }
 
-void runtime_restore_started(void)
+EMSCRIPTEN_KEEPALIVE int runtime_request_state(int operation)
 {
-   __atomic_store_n(&restore_result, 0, __ATOMIC_RELEASE);
+   int previous;
+   if (operation != RUNTIME_STATE_SAVE && operation != RUNTIME_STATE_RESTORE)
+      return 0;
+   previous = __atomic_load_n(&state_operation, __ATOMIC_ACQUIRE);
+   do {
+      if (previous != 0 && previous != STATE_SUCCEEDED && previous != STATE_FAILED)
+         return 0;
+   } while (!__atomic_compare_exchange_n(&state_operation, &previous, operation,
+               false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE));
+   return 1;
 }
 
-void runtime_restore_finished(bool success)
+int runtime_take_state_request(void)
 {
-   __atomic_store_n(&restore_result, success ? 1 : -1, __ATOMIC_RELEASE);
+   int requested = __atomic_load_n(&state_operation, __ATOMIC_ACQUIRE);
+   if (requested != RUNTIME_STATE_SAVE && requested != RUNTIME_STATE_RESTORE)
+      return 0;
+   return __atomic_compare_exchange_n(&state_operation, &requested, STATE_RUNNING,
+         false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE) ? requested : 0;
+}
+
+void runtime_state_finished(bool success)
+{
+   __atomic_store_n(&state_operation, success ? STATE_SUCCEEDED : STATE_FAILED, __ATOMIC_RELEASE);
 }

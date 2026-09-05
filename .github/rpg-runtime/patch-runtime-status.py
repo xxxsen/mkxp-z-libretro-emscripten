@@ -30,33 +30,47 @@ def patch_save(source: str) -> str:
         source,
         "   if (!ret)\n      goto error;\n\n   free(buf);\n   free(load_data);",
         "   if (!ret)\n      goto error;\n\n" +
-        guarded("   runtime_restore_finished(true);") +
-        "   free(buf);\n   free(load_data);",
+        "   free(buf);\n   free(load_data);\n" +
+        guarded("   runtime_state_finished(true);"),
     )
     source = replace_exact(
         source,
         'error:\n   RARCH_ERR("[State] %s \\"%s\\".\\n",',
         "error:\n" + guarded(
             "   if (!(load_data->flags & SAVE_TASK_FLAG_LOAD_TO_BACKUP_BUFF))\n"
-            "      runtime_restore_finished(false);"
+            "      runtime_state_finished(false);"
         ) + '   RARCH_ERR("[State] %s \\"%s\\".\\n",',
     )
     head, request = source.split("bool content_load_state(const char *path,", 1)
     request, tail = request.split("bool content_rename_state(", 1)
     request = replace_exact(
         request,
-        "   if (!core_info_current_supports_savestate())\n",
-        guarded("   if (!load_to_backup_buffer) runtime_restore_started();") +
-        "\n   if (!core_info_current_supports_savestate())\n",
-    )
-    request = replace_exact(
-        request,
         "error:\n   if (state)\n      free(state);\n   if (task)\n",
         "error:\n" + guarded(
-            "   if (!load_to_backup_buffer) runtime_restore_finished(false);"
+            "   if (!load_to_backup_buffer) runtime_state_finished(false);"
         ) + "   if (state)\n      free(state);\n   if (task)\n",
     )
-    return head + "bool content_load_state(const char *path," + request + "bool content_rename_state(" + tail
+    source = head + "bool content_load_state(const char *path," + request + "bool content_rename_state(" + tail
+    return patch_blocking_save(source)
+
+
+def patch_blocking_save(source: str) -> str:
+    head, save = source.split("bool content_auto_save_state(const char *path)", 1)
+    save, tail = save.split("/**\n * content_save_state:", 1)
+    save = replace_exact(save,
+        "   if (_len != (size_t)intfstream_write(file, serial_data, _len))",
+        "   /* WasmFS uses a vector. Reserve the exact raw RASTATE size before\n"
+        "    * libc splits writes: a power-of-two payload plus its envelope\n"
+        "    * otherwise doubles capacity on the final flush. */\n"
+        "   if (\n#ifdef EMSCRIPTEN\n"
+        "       (!settings->bools.savestate_file_compression &&\n"
+        "        intfstream_truncate(file, _len) != 0) ||\n#endif\n"
+        "       _len != (size_t)intfstream_write(file, serial_data, _len))")
+    save = replace_exact(save,
+        "   intfstream_close(file);\n   free(serial_data);\n   free(file);",
+        "   bool closed = intfstream_close(file) == 0;\n   free(serial_data);\n   free(file);")
+    save = replace_exact(save, "   return true;", "   return closed;")
+    return head + "bool content_auto_save_state(const char *path)" + save + "/**\n * content_save_state:" + tail
 
 
 def patch_video(source: str) -> str:
@@ -82,7 +96,7 @@ def patch_linker(source: str) -> str:
     # without dropping runtime/threading flags or O3 post-link optimization.
     return source + (
         "\n# RETROM_BOUNDED_LINKER\n"
-        "LDFLAGS += -Wl,--threads=1,--lto-O2\n"
+        "LDFLAGS += -Wl,--threads=1,--lto-O2 --emit-symbol-map\n"
         "export BINARYEN_CORES=2\n"
     )
 
@@ -100,6 +114,20 @@ def patch_mainloop(source: str) -> str:
         "      main_exit(NULL);\n"
         "      emscripten_force_exit(0);\n"
         "      return;\n"
+        "   }\n"
+        "   {\n"
+        "      int request = runtime_take_state_request();\n"
+        "      if (request)\n"
+        "      {\n"
+        "         char path[PATH_MAX_LENGTH];\n"
+        "         if (!runloop_get_current_savestate_path(path, sizeof(path)))\n"
+        "            runtime_state_finished(false);\n"
+        "         else if (request == RUNTIME_STATE_SAVE)\n"
+        "            /* Existing blocking writer: close/free before receipt. */\n"
+        "            runtime_state_finished(content_auto_save_state(path));\n"
+        "         else if (!command_event_main_state(CMD_EVENT_LOAD_STATE))\n"
+        "            runtime_state_finished(false);\n"
+        "      }\n"
         "   }\n",
     )
 

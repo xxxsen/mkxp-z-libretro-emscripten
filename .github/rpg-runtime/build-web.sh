@@ -116,6 +116,9 @@ build_frontend() {
     "$output/mkxp-z_libretro.js"
   install -m 0644 "$source_root/retroarch/mkxp-z_libretro.wasm" \
     "$output/mkxp-z_libretro.wasm"
+  # Keep diagnostics outside the closed release/candidate asset directory.
+  install -m 0644 "$source_root/retroarch/mkxp-z_libretro.js.symbols" \
+    "$artifacts/mkxp-z_libretro.symbols"
   commit=$(git -C "$source_root" rev-parse HEAD)
   python3 "$source_root/.github/rpg-runtime/verify-release.py" \
     --source "$source_root" \
@@ -180,6 +183,7 @@ docker run --rm --platform linux/amd64 --hostname rpg-runtime-mkxp-stage1 \
       env XDG_CACHE_HOME=/work/stage1/user-cache XDG_CONFIG_HOME=/work/stage1/user-config \
       /input/.github/rpg-runtime/build-web.sh --stage1-in-container /work/stage1 /work/artifacts
   ' bash "$build_uid" "$build_gid"
+
 python3 "$root/.github/rpg-runtime/build-cache.py" store "$work/artifacts/stage1" "$cache_root/stage1/$stage1_key"
 fi
 find "$work/stage1" -mindepth 1 -delete
@@ -225,3 +229,9 @@ docker run --rm --platform linux/amd64 --hostname rpg-runtime-mkxp-frontend \
       env XDG_CACHE_HOME=/work/frontend/user-cache XDG_CONFIG_HOME=/work/frontend/user-config \
       /input/.github/rpg-runtime/build-web.sh --frontend-in-container /work/frontend /work/artifacts /output
   ' bash "$build_uid" "$build_gid"
+
+wasm_sha=$(sha256sum "$output/mkxp-z_libretro.wasm")
+wasm_sha=${wasm_sha%% *}
+mkdir -p "$cache_root/symbols"
+install -m 0644 "$work/artifacts/mkxp-z_libretro.symbols" \
+  "$cache_root/symbols/$wasm_sha.symbols"
